@@ -1,14 +1,10 @@
 import React, { useState } from "react";
-
-// You can install bowser for more detailed browser info (optional)
-// npm install bowser
 import Bowser from "bowser";
 
 const ChatComponent = ({ onClose }) => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
 
-  // Function to get browser details
   const getBrowserDetails = () => {
     const details = Bowser.getParser(window.navigator.userAgent);
     const { browser, platform, os } = details.getResult();
@@ -20,17 +16,13 @@ const ChatComponent = ({ onClose }) => {
     };
   };
 
-  // Handle sending the message to the backend
   const handleSendMessage = async () => {
     if (input.trim() === "") return;
 
     const browserDetails = getBrowserDetails();
-    const message = {
-      type: "user",
-      text: input,
-    };
+    const userMessage = { type: "user", text: input };
 
-    const newMessages = [...messages, message];
+    const newMessages = [...messages, userMessage];
     setMessages(newMessages);
 
     // Send the message along with browser details to the backend
@@ -49,22 +41,39 @@ const ChatComponent = ({ onClose }) => {
       //     body: JSON.stringify(payload),
       // });
 
-      // const responseData = await response.json();
-      // console.log(responseData); // Handle the response from the backend
+      // Simulated AI response
+      const aiResponse =input;
 
-      const aiResponse = input;
-
-      // Add AI response
-      setMessages((prevMessages) => [
-        ...prevMessages,
-        { type: "ai", text: aiResponse },
-      ]);
+      // Show the AI response with typing effect
+      showAiResponse(aiResponse);
     } catch (error) {
       console.error("Error sending message:", error);
     }
-
-    // Clear input after sending message
     setInput("");
+  };
+
+  const showAiResponse = (response) => {
+    let currentIndex = 0;
+
+    const interval = setInterval(() => {
+      if (currentIndex < response.length) {
+        const chunk = response.slice(0, currentIndex + 1);
+        setMessages((prevMessages) => {
+          // Replace the last AI message or add a new one
+          const lastMessage = prevMessages[prevMessages.length - 1];
+          if (lastMessage?.type === "ai") {
+            return [
+              ...prevMessages.slice(0, -1),
+              { type: "ai", text: chunk },
+            ];
+          }
+          return [...prevMessages, { type: "ai", text: chunk }];
+        });
+        currentIndex++;
+      } else {
+        clearInterval(interval);
+      }
+    }, 20);
   };
 
   return (
@@ -83,7 +92,7 @@ const ChatComponent = ({ onClose }) => {
           <div
             key={index}
             className={`p-2 rounded-lg w-36 ${
-              message.type === "user" ? "bg-blue-100" : "bg-gray-100 ml-auto"
+              message.type === "ai" ? "bg-blue-100" : "bg-gray-100 ml-auto"
             }`}
           >
             <p className="w-32">{message.text}</p>

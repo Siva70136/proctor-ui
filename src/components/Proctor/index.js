@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import html2canvas from "html2canvas"; // Import html2canvas
+import html2canvas from "html2canvas";
 
 const Proctor = () => {
   const [capturing, setCapturing] = useState(false);
@@ -11,7 +11,6 @@ const Proctor = () => {
   const captureIntervalRef = useRef(null);
 
   useEffect(() => {
-    // Start the camera only when userId is entered
     const startCamera = async () => {
       if (!enableCamera) return;
       try {
@@ -43,7 +42,6 @@ const Proctor = () => {
       alert("Please enter a User ID.");
       return;
     }
-
     setLoading(true);
 
     const videoElement = videoRef.current;
@@ -51,21 +49,19 @@ const Proctor = () => {
     const context = canvas.getContext("2d");
     const videoWidth = videoElement.videoWidth;
     const videoHeight = videoElement.videoHeight;
-
     canvas.width = videoWidth;
     canvas.height = videoHeight;
     context.drawImage(videoElement, 0, 0, videoWidth, videoHeight);
     const imageBase64 = canvas.toDataURL("image/jpeg");
 
     try {
-      // Capture the window snapshot using html2canvas
-      const windowCanvas = await html2canvas(document.body); // Capture the full window
+      const windowCanvas = await html2canvas(document.body);
       const windowBase64 = windowCanvas.toDataURL("image/jpeg");
 
       const payload = {
         userId: userId,
         img_url: imageBase64,
-        window_snapshot: windowBase64, // Include the window snapshot
+        window_snapshot: windowBase64,
       };
       console.log(payload);
 
@@ -80,10 +76,8 @@ const Proctor = () => {
 
       // const data = await response.json();
       // const parsed = JSON.parse(data);
-
       setLoading(false);
 
-      // Update responses state
       // setResponses((prevResponses) => [
       //   ...prevResponses,
       //   {
@@ -120,7 +114,7 @@ const Proctor = () => {
   };
 
   return (
-    <div className="">
+    <div className="proctorComponent">
       <div className="max-w-2xl mx-auto my-10 bg-white rounded-lg shadow-xl p-6">
         <div className="mb-4">
           <label
@@ -149,7 +143,6 @@ const Proctor = () => {
           </form>
         </div>
 
-        {/* Camera Stream */}
         {enableCamera && (
           <div className="">
             <div id="cameraContainer" className="mb-6">
@@ -170,7 +163,6 @@ const Proctor = () => {
           </div>
         )}
 
-        {/* Loading Spinner */}
         {loading && (
           <div id="loadingSpinner" className="text-center mt-4">
             <svg
@@ -198,9 +190,7 @@ const Proctor = () => {
           </div>
         )}
       </div>
-
-      {/* API Response and Image Display */}
-      {responses.length > 0 && (
+      {responses?.length > 0 && (
         <div id="responseSection" className="mt-6">
           <div className="text-center mb-4">
             <h2 className="text-xl font-semibold text-gray-800">
@@ -208,37 +198,35 @@ const Proctor = () => {
             </h2>
           </div>
           <div id="responsesContainer" className="space-y-6">
-            {responses.map((response, index) => (
+            {responses?.map((response, index) => (
               <div
                 key={index}
                 className="grid grid-cols-2 gap-4 bg-white p-4 rounded-lg shadow-lg border"
               >
-                {/* Column 1: Image */}
                 <div>
                   <img
-                    src={response.imageBase64}
+                    src={response?.imageBase64}
                     alt="Captured"
                     className="rounded-md shadow-lg max-w-full"
                   />
-                  {/* Display window snapshot */}
                   <img
-                    src={response.windowSnapshot}
+                    src={response?.windowSnapshot}
                     alt="Window Snapshot"
                     className="mt-4 rounded-md shadow-lg max-w-full"
                   />
                 </div>
-                {/* Column 2: Response */}
+
                 <div>
                   <ul className="space-y-2 text-gray-600">
-                    {response.flags.map((flag, idx) => (
+                    {response?.flags?.map((flag, idx) => (
                       <li
                         key={idx}
                         className="bg-indigo-50 p-2 rounded shadow hover:bg-indigo-100"
                       >
-                        <strong>{flag.flag_type}</strong>:{" "}
-                        {flag.description_test_taker}
+                        <strong>{flag?.flag_type}</strong>:{" "}
+                        {flag?.description_test_taker}
                         <br />
-                        Confidence: {flag.confidence * 100}%
+                        Confidence: {flag?.confidence * 100}%
                       </li>
                     ))}
                   </ul>
