@@ -21,35 +21,40 @@ const ChatComponent = ({ onClose }) => {
 
     const browserDetails = getBrowserDetails();
     const userMessage = { type: "user", text: input };
-
     const newMessages = [...messages, userMessage];
-    setMessages(newMessages);
 
     // Send the message along with browser details to the backend
     try {
       const payload = {
-        message: input,
+        userId: "123",
+        query: input,
         browserDetails: browserDetails, // Attach the browser details to the payload
       };
+
+      setMessages(newMessages);
+      setInput("");
       console.log(payload);
       // Replace this URL with your actual backend API
-      // const response = await fetch('https://your-backend-api.com/chat', {
-      //     method: 'POST',
-      //     headers: {
-      //         'Content-Type': 'application/json',
-      //     },
-      //     body: JSON.stringify(payload),
-      // });
-
+      const response = await fetch(
+        "https://8bxf95r2-8000.inc1.devtunnels.ms/agent/chat",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        }
+      );
+      const data = await response.json();
+      console.log(data);
       // Simulated AI response
-      const aiResponse =input;
+      const aiResponse = data.chat_bot;
 
       // Show the AI response with typing effect
       showAiResponse(aiResponse);
     } catch (error) {
-      console.error("Error sending message:", error);
+      console.log("Error sending message:", error);
     }
-    setInput("");
   };
 
   const showAiResponse = (response) => {
@@ -62,10 +67,7 @@ const ChatComponent = ({ onClose }) => {
           // Replace the last AI message or add a new one
           const lastMessage = prevMessages[prevMessages.length - 1];
           if (lastMessage?.type === "ai") {
-            return [
-              ...prevMessages.slice(0, -1),
-              { type: "ai", text: chunk },
-            ];
+            return [...prevMessages.slice(0, -1), { type: "ai", text: chunk }];
           }
           return [...prevMessages, { type: "ai", text: chunk }];
         });

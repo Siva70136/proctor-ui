@@ -1,5 +1,4 @@
 import React, { useState, useRef, useEffect } from "react";
-import html2canvas from "html2canvas";
 
 const Proctor = () => {
   const [capturing, setCapturing] = useState(false);
@@ -8,6 +7,8 @@ const Proctor = () => {
   const [loading, setLoading] = useState(false);
   const [responses, setResponses] = useState([]);
   const videoRef = useRef(null);
+  const videoRef1 = useRef(null);
+  const canvasRef1 = useRef(null);
   const captureIntervalRef = useRef(null);
 
   useEffect(() => {
@@ -43,7 +44,7 @@ const Proctor = () => {
       return;
     }
     setLoading(true);
-
+    // Image of candidate
     const videoElement = videoRef.current;
     const canvas = document.createElement("canvas");
     const context = canvas.getContext("2d");
@@ -54,38 +55,65 @@ const Proctor = () => {
     context.drawImage(videoElement, 0, 0, videoWidth, videoHeight);
     const imageBase64 = canvas.toDataURL("image/jpeg");
 
+    // Image of Window snapshot
+    const canvas1 = canvasRef1.current;
+    const context1 = canvas1.getContext("2d");
+    context1.drawImage(videoRef1.current, 0, 0, canvas1.width, canvas1.height);
+    const snapshot = canvas1.toDataURL("image/jpeg");
+    // console.log(snapshot);
+
     try {
-      const windowCanvas = await html2canvas(document.body);
-      const windowBase64 = windowCanvas.toDataURL("image/jpeg");
+      const windowBase64 = snapshot;
 
       const payload = {
         userId: userId,
         img_url: imageBase64,
-        window_snapshot: windowBase64,
+        //window_snapshot: windowBase64,
       };
-      console.log(payload);
+      const options = {
+        userId: userId,
+        img_url: windowBase64,
+      };
+      console.log(options);
 
       // Send the data (mocked API call here)
-      // const response = await fetch("https://your-api-url.com", {
-      //   method: "POST",
-      //   headers: {
-      //     "Content-Type": "application/json",
-      //   },
-      //   body: JSON.stringify(payload),
-      // });
+      const response = await fetch(
+        "https://8bxf95r2-8000.inc1.devtunnels.ms/agent/camera",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        }
+      );
 
-      // const data = await response.json();
-      // const parsed = JSON.parse(data);
+      const windowResponse = await fetch(
+        "https://8bxf95r2-8000.inc1.devtunnels.ms/agent/screen",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(options),
+        }
+      );
+      const windowData = await windowResponse.json();
+      const data = await response.json();
+      const cameraFlags = JSON.parse(data?.camera);
+      const screenFlags = JSON.parse(windowData?.screen);
+      console.log(data, windowData);
+      console.log(screenFlags);
       setLoading(false);
-
-      // setResponses((prevResponses) => [
-      //   ...prevResponses,
-      //   {
-      //     imageBase64,
-      //     flags: parsed.flags,
-      //     windowSnapshot: windowBase64, // Include window snapshot in response
-      //   },
-      // ]);
+      setResponses((prevResponses) => [
+        ...prevResponses,
+        {
+          imageBase64: data?.img_url,
+          cameraFlags: cameraFlags?.flags,
+          screenFlags: screenFlags,
+          windowSnapshot: windowData?.img_url,
+        },
+      ]);
     } catch (error) {
       console.error("Error:", error);
       alert("Failed to send image to API: " + error);
@@ -104,13 +132,26 @@ const Proctor = () => {
       captureIntervalRef.current = setInterval(captureImageAndSend, 5000);
     } else {
       setCapturing(false);
+      const tracks = videoRef1.current?.srcObject?.getTracks();
+      tracks?.forEach((track) => track.stop());
       clearInterval(captureIntervalRef.current);
     }
   };
 
-  const setCamera = (e) => {
+  const setCamera = async (e) => {
     e.preventDefault();
-    setEnableCamera(true);
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia({
+        video: true,
+      });
+      if (videoRef1.current) {
+        videoRef1.current.srcObject = stream;
+        videoRef1.current.play();
+      }
+      setEnableCamera(true);
+    } catch (error) {
+      console.log("Error starting screen share:", error);
+    }
   };
 
   return (
@@ -190,52 +231,78 @@ const Proctor = () => {
           </div>
         )}
       </div>
-      {responses?.length > 0 && (
-        <div id="responseSection" className="mt-6">
-          <div className="text-center mb-4">
-            <h2 className="text-xl font-semibold text-gray-800">
-              API Responses:
-            </h2>
-          </div>
-          <div id="responsesContainer" className="space-y-6">
-            {responses?.map((response, index) => (
-              <div
-                key={index}
-                className="grid grid-cols-2 gap-4 bg-white p-4 rounded-lg shadow-lg border"
-              >
-                <div>
-                  <img
-                    src={response?.imageBase64}
-                    alt="Captured"
-                    className="rounded-md shadow-lg max-w-full"
-                  />
-                  <img
-                    src={response?.windowSnapshot}
-                    alt="Window Snapshot"
-                    className="mt-4 rounded-md shadow-lg max-w-full"
-                  />
-                </div>
-
-                <div>
-                  <ul className="space-y-2 text-gray-600">
-                    {response?.flags?.map((flag, idx) => (
-                      <li
-                        key={idx}
-                        className="bg-indigo-50 p-2 rounded shadow hover:bg-indigo-100"
-                      >
-                        <strong>{flag?.flag_type}</strong>:{" "}
-                        {flag?.description_test_taker}
-                        <br />
-                        Confidence: {flag?.confidence * 100}%
+      <div>
+        <video
+          ref={videoRef1}
+          style={{
+            display: "none",
+            maxWidth: "100%",
+            maxHeight: "500px",
+            border: "1px solid #ccc",
+          }}
+        ></video>
+        <canvas
+          ref={canvasRef1}
+          style={{ display: "none" }}
+          width={1280}
+          height={720}
+        ></canvas>
+      </div>
+      <div>
+        {responses?.length > 0 && (
+          <div id="responseSection" className="max-w-2xl mx-auto my-10">
+            <div className="text-center mb-4">
+              <h2 className="text-xl font-semibold text-gray-800">
+                API Responses:
+              </h2>
+            </div>
+            <div id="responsesContainer">
+              {responses?.map((response, index) => (
+                <div
+                  key={index}
+                  className="grid grid-cols-2 bg-white p-4 rounded-lg shadow-lg border"
+                >
+                  <div>
+                    <img
+                      src={response?.imageBase64}
+                      alt="Captured"
+                      className="rounded-md shadow-lg max-w-full "
+                    />
+                    <img
+                      src={response?.windowSnapshot}
+                      alt="Window Snapshot"
+                      className="mt-4 rounded-md shadow-lg max-w-full"
+                    />
+                  </div>
+                  <div>
+                    <ul className="space-y-2 text-gray-600">
+                      {response?.cameraFlags?.map((flag, idx) => (
+                        <li
+                          key={idx}
+                          className="bg-indigo-50 p-2 rounded shadow hover:bg-indigo-100"
+                        >
+                          <strong>{flag?.flag_type}</strong>:{" "}
+                          {flag?.description_test_taker}
+                          <br />
+                          Confidence: {flag?.confidence * 100}%
+                        </li>
+                      ))}
+                    </ul>
+                    <ul className="space-y-2 text-gray-600 mt-3">
+                      <strong>Screen</strong>
+                      <li className="bg-indigo-50 p-2 rounded shadow hover:bg-indigo-100">
+                        <strong>{response?.screenFlags?.flag}</strong>:{" "}
+                        {response?.screenFlags?.details}
+                        {response?.screenFlags?.test_taker_description}
                       </li>
-                    ))}
-                  </ul>
+                    </ul>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };
