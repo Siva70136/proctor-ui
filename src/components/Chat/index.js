@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import Bowser from "bowser";
-
+import Cookies from "js-cookie";
 const ChatComponent = ({ onClose }) => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
@@ -22,11 +22,12 @@ const ChatComponent = ({ onClose }) => {
     const browserDetails = getBrowserDetails();
     const userMessage = { type: "user", text: input };
     const newMessages = [...messages, userMessage];
+    const userId = Cookies.get("userId");
 
     // Send the message along with browser details to the backend
     try {
       const payload = {
-        userId: "123",
+        userId: userId || "",
         query: input,
         browserDetails: browserDetails, // Attach the browser details to the payload
       };
@@ -64,7 +65,6 @@ const ChatComponent = ({ onClose }) => {
       if (currentIndex < response.length) {
         const chunk = response.slice(0, currentIndex + 1);
         setMessages((prevMessages) => {
-          // Replace the last AI message or add a new one
           const lastMessage = prevMessages[prevMessages.length - 1];
           if (lastMessage?.type === "ai") {
             return [...prevMessages.slice(0, -1), { type: "ai", text: chunk }];

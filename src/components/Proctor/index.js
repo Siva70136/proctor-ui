@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
+import Cookies from "js-cookie";
 
 const Proctor = () => {
   const [capturing, setCapturing] = useState(false);
@@ -6,6 +7,7 @@ const Proctor = () => {
   const [userId, setUserId] = useState("");
   const [loading, setLoading] = useState(false);
   const [responses, setResponses] = useState([]);
+  const [shareScreen, setShareScreen] = useState(false);
   const videoRef = useRef(null);
   const videoRef1 = useRef(null);
   const canvasRef1 = useRef(null);
@@ -60,7 +62,6 @@ const Proctor = () => {
     const context1 = canvas1.getContext("2d");
     context1.drawImage(videoRef1.current, 0, 0, canvas1.width, canvas1.height);
     const snapshot = canvas1.toDataURL("image/jpeg");
-    // console.log(snapshot);
 
     try {
       const windowBase64 = snapshot;
@@ -68,14 +69,12 @@ const Proctor = () => {
       const payload = {
         userId: userId,
         img_url: imageBase64,
-        //window_snapshot: windowBase64,
       };
       const options = {
         userId: userId,
         img_url: windowBase64,
       };
       console.log(options);
-
       // Send the data (mocked API call here)
       const response = await fetch(
         "https://8bxf95r2-8000.inc1.devtunnels.ms/agent/camera",
@@ -102,8 +101,6 @@ const Proctor = () => {
       const data = await response.json();
       const cameraFlags = JSON.parse(data?.camera);
       const screenFlags = JSON.parse(windowData?.screen);
-      console.log(data, windowData);
-      console.log(screenFlags);
       setLoading(false);
       setResponses((prevResponses) => [
         ...prevResponses,
@@ -115,7 +112,7 @@ const Proctor = () => {
         },
       ]);
     } catch (error) {
-      console.error("Error:", error);
+      console.log("Error:", error);
       alert("Failed to send image to API: " + error);
       setLoading(false);
     }
@@ -129,29 +126,46 @@ const Proctor = () => {
 
     if (!capturing) {
       setCapturing(true);
+      if(!shareScreen){
+        screenShare();
+      }
+      
       captureIntervalRef.current = setInterval(captureImageAndSend, 5000);
     } else {
       setCapturing(false);
       const tracks = videoRef1.current?.srcObject?.getTracks();
       tracks?.forEach((track) => track.stop());
       clearInterval(captureIntervalRef.current);
+      setShareScreen(false);
     }
   };
-
-  const setCamera = async (e) => {
-    e.preventDefault();
+  const screenShare=async()=>{
     try {
-      const stream = await navigator.mediaDevices.getDisplayMedia({
-        video: true,
-      });
-      if (videoRef1.current) {
-        videoRef1.current.srcObject = stream;
-        videoRef1.current.play();
-      }
-      setEnableCamera(true);
+      
+        const stream = await navigator.mediaDevices.getDisplayMedia({
+          video: true,
+        });
+        if (videoRef1.current) {
+          videoRef1.current.srcObject = stream;
+          videoRef1.current.play();
+        }
+        
+        setShareScreen(true);
+      
     } catch (error) {
       console.log("Error starting screen share:", error);
     }
+  }
+
+  const setCamera = async (e) => {
+    e.preventDefault();
+    Cookies.set("userId", userId, { expires: 0.1667 });
+    console.log(userId,shareScreen);
+    if (userId && !shareScreen) {
+      setEnableCamera(true);
+      screenShare();
+    }
+   
   };
 
   return (
