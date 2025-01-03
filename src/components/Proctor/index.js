@@ -1,7 +1,10 @@
 import React, { useState, useRef, useEffect } from "react";
+import { useDispatch } from "react-redux";
 import Cookies from "js-cookie";
+import { setCanvasRef } from "../../slice/canava";
 
 const Proctor = () => {
+  const dispatch=useDispatch();
   const [capturing, setCapturing] = useState(false);
   const [enableCamera, setEnableCamera] = useState(false);
   const [userId, setUserId] = useState("");
@@ -27,7 +30,6 @@ const Proctor = () => {
         alert("Failed to access camera: " + err);
       }
     };
-
     startCamera();
 
     // Cleanup the camera stream when the component unmounts
@@ -87,28 +89,28 @@ const Proctor = () => {
         }
       );
 
-      const windowResponse = await fetch(
-        "https://8bxf95r2-8000.inc1.devtunnels.ms/agent/screen",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(options),
-        }
-      );
-      const windowData = await windowResponse.json();
+      // const windowResponse = await fetch(
+      //   "https://8bxf95r2-8000.inc1.devtunnels.ms/agent/screen",
+      //   {
+      //     method: "POST",
+      //     headers: {
+      //       "Content-Type": "application/json",
+      //     },
+      //     body: JSON.stringify(options),
+      //   }
+      // );
+      // const windowData = await windowResponse.json();
       const data = await response.json();
       const cameraFlags = JSON.parse(data?.camera);
-      const screenFlags = JSON.parse(windowData?.screen);
+      // const screenFlags = JSON.parse(windowData?.screen);
       setLoading(false);
       setResponses((prevResponses) => [
         ...prevResponses,
         {
           imageBase64: data?.img_url,
           cameraFlags: cameraFlags?.flags,
-          screenFlags: screenFlags,
-          windowSnapshot: windowData?.img_url,
+          // screenFlags: screenFlags,
+          // windowSnapshot: windowData?.img_url,
         },
       ]);
     } catch (error) {
@@ -162,11 +164,43 @@ const Proctor = () => {
     Cookies.set("userId", userId, { expires: 0.1667 });
     console.log(userId,shareScreen);
     if (userId && !shareScreen) {
+      dispatch(setCanvasRef({canvasRef1,videoRef1}));
       setEnableCamera(true);
       screenShare();
     }
    
   };
+
+  const validate = async () => {
+    try{
+      const options = {
+        userId: userId,
+      };
+      console.log(options);
+      // Send the data (mocked API call here)
+      const response = await fetch(
+        "https://8bxf95r2-8000.inc1.devtunnels.ms/agent/validate",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(options),
+        }
+      );
+      const windowData = await response.json();
+      console.log(windowData);
+      if(windowData.status===200){
+        alert("response validated successfully.");
+      }else{
+        alert("Failed to validate response.");
+      }
+    }
+    catch(error){
+      console.log("Error:", error);
+      alert("Failed to validate the responses: " + error);
+    }
+  }
 
   return (
     <div className="proctorComponent">
@@ -213,6 +247,13 @@ const Proctor = () => {
                 className="px-6 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-700 focus:outline-none"
               >
                 {capturing ? "Stop Capture" : "Start Capture"}
+              </button>
+
+              <button
+                onClick={validate}
+                className="ml-2 px-6 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-700 focus:outline-none"
+              >
+                validate
               </button>
             </div>
           </div>

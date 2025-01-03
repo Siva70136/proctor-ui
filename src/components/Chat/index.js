@@ -1,9 +1,13 @@
 import React, { useState } from "react";
+import { useSelector } from "react-redux";
 import Bowser from "bowser";
 import Cookies from "js-cookie";
 const ChatComponent = ({ onClose }) => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
+  const [snapshot, setSnapshot] = useState("");
+  const canvasRef1 = useSelector((state) => state.canvas.canvasReferences);
+  const videoRef1 = useSelector((state) => state.canvas.videoReferences);
 
   const getBrowserDetails = () => {
     const details = Bowser.getParser(window.navigator.userAgent);
@@ -29,11 +33,13 @@ const ChatComponent = ({ onClose }) => {
       const payload = {
         userId: userId || "",
         query: input,
-        browserDetails: browserDetails, // Attach the browser details to the payload
+        browserDetails: browserDetails,
+        screen: snapshot ? snapshot : "",
       };
 
       setMessages(newMessages);
       setInput("");
+      setSnapshot("");
       console.log(payload);
       // Replace this URL with your actual backend API
       const response = await fetch(
@@ -51,11 +57,22 @@ const ChatComponent = ({ onClose }) => {
       // Simulated AI response
       const aiResponse = data.chat_bot;
 
-      // Show the AI response with typing effect
-      showAiResponse(aiResponse);
+      setMessages((prevMessages) => [
+        ...prevMessages,
+        { type: "ai", text: aiResponse },
+      ]);
+      //showAiResponse(aiResponse);
     } catch (error) {
       console.log("Error sending message:", error);
     }
+  };
+
+  const takeSnapshot = () => {
+    const canvas1 = canvasRef1.current;
+    const context1 = canvas1.getContext("2d");
+    context1.drawImage(videoRef1.current, 0, 0, canvas1.width, canvas1.height);
+    const snapshot = canvas1.toDataURL("image/jpeg");
+    setSnapshot(snapshot);
   };
 
   const showAiResponse = (response) => {
@@ -104,19 +121,40 @@ const ChatComponent = ({ onClose }) => {
 
       {/* Message Input */}
       <div className="flex">
-        <input
-          type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
+        <div className="flex">
+          <form
+            className="flex w-full relative"
+            onSubmit={(e) => e.preventDefault()}
+          >
+            <div className="relative w-full">
+              <input
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
           className="w-full p-2 border rounded-l-md focus:outline-none"
-          placeholder="Type a message"
-        />
-        <button
-          onClick={handleSendMessage}
-          className="px-4 bg-blue-500 text-white rounded-r-md hover:bg-blue-600 focus:outline-none"
-        >
-          Send
-        </button>
+                placeholder="Type a message"
+              />
+              <button
+                type="button"
+                onClick={takeSnapshot}
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 focus:outline-none"
+                title="Add Image"
+              >
+                <img
+                  src={snapshot || "https://example.com/path-to-icon.png"}
+                  alt="Add"
+                  className="h-5 w-5"
+                />
+              </button>
+            </div>
+            <button
+              onClick={handleSendMessage}
+              className="ml-2 px-4 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none"
+            >
+              Send
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   );
